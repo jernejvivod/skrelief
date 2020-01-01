@@ -6,7 +6,6 @@ from sklearn.base import BaseEstimator, TransformerMixin
 from julia import Julia
 jl = Julia(compiled_modules=False)
 script_path = os.path.abspath(__file__)
-print(script_path)
 jl.eval('push!(LOAD_PATH, "' + script_path[:script_path.rfind('/')] + '/")')
 
 from julia import ReliefMSS as ReliefMSS_jl
