@@ -67,9 +67,8 @@ class Relieff(BaseEstimator, TransformerMixin):
         # If class with minimal number of examples (minus one) has less than k examples, issue warning
         # that parameter k was reduced.
         if min_instances < self.k:
-            pass
-            # warnings.warn("Parameter k was reduced to {0} because one of the classes " \
-            #         "does not have {1} instances associated with it.".format(min_instances, self.k), Warning)
+            warnings.warn("Parameter k was reduced to {0} because one of the classes " \
+                    "does not have {1} instances associated with it.".format(min_instances, self.k), Warning)
 
         # Compute feature weights and rank.
         self.weights = self._relieff(data, target, self.m, int(min(self.k, min_instances)), self.mode, self.sig, self.dist_func)

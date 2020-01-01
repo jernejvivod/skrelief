@@ -9,7 +9,7 @@ script_path = os.path.abspath(__file__)
 jl.eval('push!(LOAD_PATH, "' + script_path[:script_path.rfind('/')] + '/")')
 
 from julia import TuRF as TuRF_jl
-from algorithms.relieff import Relieff
+from skrelief.relieff import Relieff
 
 class TuRF(BaseEstimator, TransformerMixin):
     """sklearn compatible implementation of the TuRF algorithm.
