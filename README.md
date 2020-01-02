@@ -17,7 +17,7 @@ The following packages are required to use skrelief:
 * julia
 
 
-Once the prerequisites are installed, you should be able to install sklearn with a pip command:
+Once the prerequisites are installed, you should be able to install skrelief with a pip command:
 
 ```
 pip install -e git+https://github.com/Architecton/skrelief#egg=skrelief
