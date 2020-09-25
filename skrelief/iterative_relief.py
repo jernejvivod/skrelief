@@ -20,27 +20,32 @@ class IterativeRelief(BaseEstimator, TransformerMixin):
         n_features_to_select (int): number of features to select from dataset.
         m (int): training data sample size.
         min_incl (int): minimum number of samples from each class to include in hypersphere around each sample.
-        dist_func (function): function used to measure similarities between samples.
         max_iter (int): maximum number of iterations to perform.
+        dist_func (function): function used to measure similarities between samples.
+        If equal to None, the default implementation of weighted L1 distance in Julia is used.
+        f_type (string): specifies whether the features are continuous or discrete 
+        and can either have the value of "continuous" or "discrete".
 
     Attributes:
         n_features_to_select (int): number of features to select from dataset.
         m (int): training data sample size.
         min_incl (int): minimum number of samples from each class to include in hypersphere around each sample.
-        dist_func (function): function used to measure similarities between samples.
         max_iter (int): maximum number of iterations to perform.
+        dist_func (function): function used to measure similarities between samples.
+        f_type (string): continuous or discrete features.
         _iterative_relief (function): function implementing IRelief algorithm written in Julia programming language.
 
     Author: Jernej Vivod
     """
    
     def __init__(self, n_features_to_select=10, m=-1, min_incl=3, 
-            dist_func=lambda x1, x2, w : np.sum(np.abs(w*(x1-x2)), 1), max_iter=100):
+            max_iter=100, dist_func=None, f_type="continuous"):
         self.n_features_to_select = n_features_to_select
         self.m = m
         self.min_incl = min_incl
-        self.dist_func = dist_func
         self.max_iter = max_iter
+        self.dist_func = dist_func
+        self.f_type = f_type
         self._iterative_relief = IterativeRelief_jl.iterative_relief
 
 
@@ -57,7 +62,12 @@ class IterativeRelief(BaseEstimator, TransformerMixin):
         """
 
         # Compute feature weights and rank.
-        self.weights = self._iterative_relief(data, target, self.m, self.min_incl, self.dist_func, self.max_iter)
+        if self.dist_func is not None:
+            # If distance function specified.
+            self.weights = self._iterative_relief(data, target, self.m, self.min_incl, self.max_iter, self.dist_func, f_type=self.f_type)
+        else:
+            # If distance function not specified, use default weighted L1 distance (implemented in Julia).
+            self.weights = self._iterative_relief(data, target, self.m, self.min_incl, self.max_iter, f_type=self.f_type)
         self.rank = rankdata(-self.weights, method='ordinal')
         
         # Return reference to self.

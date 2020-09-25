@@ -7,8 +7,9 @@ include("./utils/square_to_vec.jl")
 
 
 """
-    boostedsurf(data::Array{<:Real,2}, target::Array{<:Number,1}, phi::Integer=3, 
-                       dist_func::Any=(e1, e2, w) -> sum(w.*abs.(e1 .- e2), dims=2))::Array{Float64,1}
+    boostedsurf(data::Array{<:Real,2}, target::Array{<:Integer,1}, phi::Integer=3, 
+                       dist_func::Any=(e1, e2, w) -> sum(w.*abs.(e1 .- e2), dims=2); 
+                       f_type::String="continuous")::Array{Float64,1}
 
 Compute feature weights using BoostedSURF algorithm.
 
@@ -20,8 +21,9 @@ gorithm for genome-wide genetic analysis. Hanover, NH 03755, USA,
 2013. Dartmouth College.
 
 """
-function boostedsurf(data::Array{<:Real,2}, target::Array{<:Number,1}, phi::Integer=3, 
-                       dist_func::Any=(e1, e2, w) -> sum(w.*abs.(e1 .- e2), dims=2))::Array{Float64,1}
+function boostedsurf(data::Array{<:Real,2}, target::Array{<:Integer,1}, phi::Integer=3, 
+                       dist_func::Any=(e1, e2, w) -> sum(w.*abs.(e1 .- e2), dims=2); 
+                       f_type::String="continuous")::Array{Float64,1}
 
     # Initialize feature weights vector.
     weights = zeros(Float64, 1, size(data, 2))
@@ -110,29 +112,63 @@ function boostedsurf(data::Array{<:Real,2}, target::Array{<:Number,1}, phi::Inte
 
         ### Weights Update ###
         
-        # Penalty term for near neighbours.
-        penalty_near = sum(abs.(data[idx:idx, :] .- data[hit_neigh_mask_near, :]) ./ (max_f_vals .- min_f_vals .+ eps(Float64)), dims=1)
+        if f_type == "continuous"
+            # If features continuous.
+        
+            # Penalty term for near neighbours.
+            penalty_near = sum(abs.(data[idx:idx, :] .- data[hit_neigh_mask_near, :]) ./ (max_f_vals .- min_f_vals .+ eps(Float64)), dims=1)
 
-        # Reward term for near neighbours.
-        reward_near = sum(weights_mult1 .* abs.(data[idx:idx, :] .- data[miss_neigh_mask_near, :]) ./ (max_f_vals .- min_f_vals .+ eps(Float64)), dims=1)
+            # Reward term for near neighbours.
+            reward_near = sum(weights_mult1 .* abs.(data[idx:idx, :] .- data[miss_neigh_mask_near, :]) ./ (max_f_vals .- min_f_vals .+ eps(Float64)), dims=1)
 
-        # Weights values for near neighbours.
-        weights_near = weights .- penalty_near ./ (size(data, 1)*size(data[hit_neigh_mask_near, :], 1) + eps(Float64)) .+ 
-            reward_near ./ (size(data, 1)*size(data[miss_neigh_mask_near, :], 1) + eps(Float64))
+            # Weights values for near neighbours.
+            weights_near = weights .- penalty_near ./ (size(data, 1)*size(data[hit_neigh_mask_near, :], 1) + eps(Float64)) .+ 
+                reward_near ./ (size(data, 1)*size(data[miss_neigh_mask_near, :], 1) + eps(Float64))
 
 
-        # Penalty term for far neighbours.
-        penalty_far = sum(abs.(data[idx:idx, :] .- data[hit_neigh_mask_far, :]) ./ (max_f_vals .- min_f_vals .+ eps(Float64)), dims=1)
+            # Penalty term for far neighbours.
+            penalty_far = sum(abs.(data[idx:idx, :] .- data[hit_neigh_mask_far, :]) ./ (max_f_vals .- min_f_vals .+ eps(Float64)), dims=1)
 
-        # Reward term for far neighbours.
-        reward_far = sum(weights_mult2 .* abs.(data[idx:idx, :] .- data[miss_neigh_mask_far, :]) ./ (max_f_vals .- min_f_vals .+ eps(Float64)), dims=1)
+            # Reward term for far neighbours.
+            reward_far = sum(weights_mult2 .* abs.(data[idx:idx, :] .- data[miss_neigh_mask_far, :]) ./ (max_f_vals .- min_f_vals .+ eps(Float64)), dims=1)
 
-        # Weights values for far neighbours.
-        weights_far = weights .- penalty_far ./ (size(data, 1)*size(data[hit_neigh_mask_far, :], 1) + eps(Float64)) .+ 
-            reward_far ./ (size(data, 1)*size(data[miss_neigh_mask_far, :], 1) + eps(Float64))
+            # Weights values for far neighbours.
+            weights_far = weights .- penalty_far ./ (size(data, 1)*size(data[hit_neigh_mask_far, :], 1) + eps(Float64)) .+ 
+                reward_far ./ (size(data, 1)*size(data[miss_neigh_mask_far, :], 1) + eps(Float64))
 
-        # Update feature weights. 
-        weights = weights_near - (weights_far - weights)
+            # Update feature weights. 
+            weights = weights_near - (weights_far - weights)
+
+        elseif f_type == "discrete"
+            # If features discrete.
+
+            # Penalty term for near neighbours.
+            penalty_near = sum(Int64.(data[idx:idx, :] .!= data[hit_neigh_mask_near, :]), dims=1)
+
+            # Reward term for near neighbours.
+            reward_near = sum(weights_mult1 .* Int64.(data[idx:idx, :] .!= data[miss_neigh_mask_near, :]), dims=1)
+
+            # Weights values for near neighbours.
+            weights_near = weights .- penalty_near ./ (size(data, 1)*size(data[hit_neigh_mask_near, :], 1) + eps(Float64)) .+ 
+                reward_near ./ (size(data, 1)*size(data[miss_neigh_mask_near, :], 1) + eps(Float64))
+
+
+            # Penalty term for far neighbours.
+            penalty_far = sum(Int64.(data[idx:idx, :] .!= data[hit_neigh_mask_far, :]), dims=1)
+
+            # Reward term for far neighbours.
+            reward_far = sum(weights_mult2 .* Int64.(data[idx:idx, :] .!= data[miss_neigh_mask_far, :]), dims=1)
+
+            # Weights values for far neighbours.
+            weights_far = weights .- penalty_far ./ (size(data, 1)*size(data[hit_neigh_mask_far, :], 1) + eps(Float64)) .+ 
+                reward_far ./ (size(data, 1)*size(data[miss_neigh_mask_far, :], 1) + eps(Float64))
+
+            # Update feature weights. 
+            weights = weights_near - (weights_far - weights)
+            
+        else
+            throw(DomainError(f_type, "f_type can only be equal to \"continuous\" or \"discrete\"."))
+        end
         
         ######################
 

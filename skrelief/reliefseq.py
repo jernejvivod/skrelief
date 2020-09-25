@@ -26,6 +26,11 @@ class ReliefSeq(BaseEstimator, TransformerMixin):
         k_min (int): lower ReliefF k parameter interval bound.
         k_max (int): upper ReliefF k parameter interval bound. 
         dist_func (function): function used to measure similarities between samples.
+        mode (str): how to compute updated weights from nearest neighbours. 
+        Legal values are "k_nearest", "diff" and "exp_rank"
+        sig (float): parameter specifying the influence of weights. Ignored if mode = "k_nearest".
+        f_type (string): specifies whether the features are continuous or discrete 
+        and can either have the value of "continuous" or "discrete".
 
     Attributes:
         n_features_to_select (int): number of features to select from dataset.
@@ -33,15 +38,22 @@ class ReliefSeq(BaseEstimator, TransformerMixin):
         k_min (int): lower ReliefF k parameter interval bound.
         k_max (int): upper ReliefF k parameter interval bound. 
         dist_func (function): function used to measure similarities between samples.
+        mode (str): how to compute updated weights from nearest neighbours. 
+        sig (float): parameter specifying the influence of weights. Ignored if mode = "k_nearest".
+        f_type (string): continuous or discrete features.
         _relieff (function): function implementing ReliefF algorithm written in Julia programming language.
     """
    
-    def __init__(self, n_features_to_select=10, m=-1, k_min=5, k_max=10, dist_func=lambda x1, x2 : np.sum(np.abs(x1-x2), 1)):
+    def __init__(self, n_features_to_select=10, m=-1, k_min=5, k_max=10, 
+            dist_func=None, mode="k_nearest", sig=1.0, f_type="continuous"):
         self.n_features_to_select = n_features_to_select
         self.m = m 
         self.k_min = k_min
         self.k_max = k_max
         self.dist_func = dist_func
+        self.mode = mode
+        self.sig = sig
+        self.f_type = f_type
         self._reliefseq = ReliefSeq_jl.reliefseq
 
 
@@ -58,7 +70,12 @@ class ReliefSeq(BaseEstimator, TransformerMixin):
         """
 
         # Compute feature weights and rank.
-        self.weights = self._reliefseq(data, target, self.m, self.k_min, self.k_max, self.dist_func)
+        if self.dist_func is not None:
+            self.weights = self._reliefseq(data, target, self.m, self.k_min, self.k_max, 
+                    self.dist_func, mode=self.mode, sig=self.sig, f_type=self.f_type)
+        else:
+            self.weights = self._reliefseq(data, target, self.m, self.k_min, self.k_max, 
+                    mode=self.mode, sig=self.sig, f_type=self.f_type)
         self.rank = rankdata(-self.weights, method='ordinal')
         
         # Return reference to self.

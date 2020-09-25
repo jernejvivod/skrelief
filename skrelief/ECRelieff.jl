@@ -10,13 +10,13 @@ using Statistics
 include("Relieff.jl")
 
 """
-    function ec_ranking(data::Array{<:Real,2}, target::Array{<:Number,1}, 
-                        weights::Array{Float64,1}, mu_vals::Array{Float64,1})::Array{Int64,1}
+    ec_ranking(data::Array{<:Real,2}, target::Array{<:Integer,1}, 
+                    weights::Array{<:AbstractFloat,1}, mu_vals::Array{<:AbstractFloat,1})::Array{Int64,1}
 
 Perform evaporative feature ranking (auxiliary function).
 """
-function ec_ranking(data::Array{<:Real,2}, target::Array{<:Number,1}, 
-                    weights::Array{Float64,1}, mu_vals::Array{Float64,1})::Array{Int64,1}
+function ec_ranking(data::Array{<:Real,2}, target::Array{<:Integer,1}, 
+                    weights::Array{<:AbstractFloat,1}, mu_vals::Array{<:AbstractFloat,1})::Array{Int64,1}
 
 	# Get maximal ReliefF weight and compute epsilon values.
 	max_weight = maximum(weights)
@@ -38,7 +38,7 @@ function ec_ranking(data::Array{<:Real,2}, target::Array{<:Number,1},
 	best_tinfo = tinfo
 
 	# While there are unranked features, perform evaporation.
-	while length(index_vector) > 1
+	@inbounds while length(index_vector) > 1
 		
 
 		### Grid search for best temperature from previous step ###
@@ -51,7 +51,7 @@ function ec_ranking(data::Array{<:Real,2}, target::Array{<:Number,1},
 
 		
 		# Perform grid search for best value of tinfo.
-		for tinfo_nxt = tinfo-0.3:0.1:tinfo+0.3
+		@inbounds for tinfo_nxt = tinfo-0.3:0.1:tinfo+0.3
 
 			# Compute weights for next value of tinfo.
 			weights_nxt = eps .- tinfo_nxt.*mu_vals
@@ -149,13 +149,13 @@ end
 
 
 """
-    mu_vals(data::Array{<:Real,2}, target::Array{<:Number,1})::Array{Float64,2}
+    mu_vals(data::Array{<:Real,2}, target::Array{<:Integer,1})
 
 Compute mu values from data and target (auxiliary function).
 """
-function mu_vals(data::Array{<:Real,2}, target::Array{<:Number,1})
+function mu_vals(data::Array{<:Real,2}, target::Array{<:Integer,1})
     mu_vals = Array{Float64}(undef, size(data, 2))
-    for (idx, col) in enumerate(eachcol(data))
+    @inbounds for (idx, col) in enumerate(eachcol(data))
         mu_vals[idx] = scaled_mutual_information(Array{Real,1}(col), target)
     end 
     return mu_vals
@@ -163,8 +163,8 @@ end
 
 
 """
-    function ec_relieff(data::Array{<:Real,2}, target::Array{<:Number,1}, m::Integer=-1, 
-                        k::Integer=5, dist_func::Any=(e1, e2) -> sum(abs.(e1 .- e2), dims=2))
+function ec_relieff(data::Array{<:Real,2}, target::Array{<:Integer,1}, m::Signed=-1, 
+                    k::Integer=5, dist_func::Any=(e1, e2) -> sum(abs.(e1 .- e2), dims=2))::Array{Int64,1}
 
 Compute feature rankings using Evaporative Cooling ReliefF algorithm.
 
@@ -173,19 +173,15 @@ Compute feature rankings using Evaporative Cooling ReliefF algorithm.
 - B.A. McKinney, D.M. Reif, B.C. White, J.E. Crowe, Jr., J.H. Moore.
 Evaporative cooling feature selection for genotypic data involving interactions.
 """
-function ec_relieff(data::Array{<:Real,2}, target::Array{<:Number,1}, m::Integer=-1, 
-                    k::Integer=5, dist_func::Any=(e1, e2) -> sum(abs.(e1 .- e2), dims=2))::Array{Int64,1}
+function ec_relieff(data::Array{<:Real,2}, target::Array{<:Integer,1}, m::Signed=-1, 
+                    k::Integer=5, dist_func::Any=(e1, e2) -> sum(abs.(e1 .- e2), dims=2); 
+                    mode::String="k_nearest", sig::Real=1.0, f_type::String="continuous")::Array{Int64,1}
     
     # Compute ReliefF weights.
-    relieff_weights = Relieff.relieff(data, target, m, k, "k_nearest", 1.0, dist_func)
+    relieff_weights = Relieff.relieff(data, target, m, k, dist_func, mode=mode, sig=sig, f_type=f_type)
 
     # Perform evaporative cooling feature selection to get feature ranks.
     return ec_ranking(data, target, relieff_weights, mu_vals(data, target))
 end
-
-data = Int64.(round.(rand(1000, 3)))
-target = xor.(data[:, 1], data[:, 3])
-
-ec_relieff(data, target)
 
 end

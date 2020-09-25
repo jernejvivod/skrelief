@@ -25,7 +25,8 @@ class VLSRelief(BaseEstimator, TransformerMixin):
         num_partitions_to_select (int): number of partitions to select for each iteration.
         num_subsets (int): number of subsets to evaluate.
         partition_size (int): size of selected partitions.
-        rba (object): feature weighting algorithm wrapped by the VLSRelief algorithm.
+        rba (object): feature weighting algorithm wrapped by the VLSRelief algorithm. If equal
+        to None, the default ReliefF RBA implemented in Julia is used.
 
     Attributes:
         n_features_to_select (int): number of features to select from dataset.
@@ -36,7 +37,7 @@ class VLSRelief(BaseEstimator, TransformerMixin):
         _vlsrelief (function): function implementing VLSRelief algorithm written in Julia programming language.
     """
    
-    def __init__(self, n_features_to_select=10, num_partitions_to_select=10, num_subsets=50, partition_size=10, rba=Relieff()):
+    def __init__(self, n_features_to_select=10, num_partitions_to_select=10, num_subsets=50, partition_size=10, rba=None):
         self.n_features_to_select = n_features_to_select
         self.num_partitions_to_select = num_partitions_to_select
         self.num_subsets = num_subsets
@@ -58,8 +59,15 @@ class VLSRelief(BaseEstimator, TransformerMixin):
         """
 
         # Compute feature weights and rank.
-        self.weights = self._vlsrelief(data, target, self.num_partitions_to_select, 
-                self.num_subsets, self.partition_size, lambda d, t : self._rba.fit(d, t).weights)
+        if self._rba is not None:
+            # If wrapped RBA specified.
+            self.weights = self._vlsrelief(data, target, self.num_partitions_to_select, 
+                    self.num_subsets, self.partition_size, rba=self._rba)
+        else:
+            # If wrapped RBA not specified, use default RBA (ReliefF implemented in Julia).
+            self.weights = self._vlsrelief(data, target, self.num_partitions_to_select, 
+                    self.num_subsets, self.partition_size)
+
         self.rank = rankdata(-self.weights, method='ordinal')
         
         # Return reference to self.

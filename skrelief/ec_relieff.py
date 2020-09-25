@@ -25,23 +25,34 @@ class ECRelieff(BaseEstimator, TransformerMixin):
         m (int): training data sample size.
         k (int): number of nearest neighbours to find (for each class).
         dist_func (function): function used to measure similarities between samples.
+        If equal to None, the default implementation of L1 distance in Julia is used.
+        mode (string): specifies which type of weights update to perform and can either have the value of "k_nearest", "diff" or "exp_rank" (see reference paper). 
+        sig (float): kernel width used when mode has the value of "exp_rank".
+        f_type (string): specifies whether the features are continuous or discrete 
+        and can either have the value of "continuous" or "discrete".
 
     Attributes:
         n_features_to_select (int): number of features to select from dataset.
         m (int): training data sample size.
         k (int): number of nearest neighbours to find (for each class).
         dist_func (function): function used to measure similarities between samples.
+        mode (string): which type of weights update to perform.
+        sig (float): kernel width (when mode has the value of "exp_rank").
+        f_type (string): continuous or discrete features.
         _ec_relieff (function): function implementing ECReliefF algorithm written in Julia programming language.
 
     Author: Jernej Vivod
     """
   
 
-    def __init__(self, n_features_to_select=10, m=-1, k=5, dist_func=lambda x1, x2 : np.sum(np.abs(x1-x2), 1)):
+    def __init__(self, n_features_to_select=10, m=-1, k=5, dist_func=None, mode="k_nearest", sig=1.0, f_type="continuous"):
         self.n_features_to_select = n_features_to_select
         self.m = m                                        
         self.k = k                                        
-        self.dist_func = dist_func                        
+        self.dist_func = dist_func
+        self.mode = mode
+        self.sig = sig
+        self.f_type = f_type
         self._ec_relieff = ECRelieff_jl.ec_relieff
 
 
@@ -57,7 +68,16 @@ class ECRelieff(BaseEstimator, TransformerMixin):
             (object): reference to self
         """
         
-        self.rank = self._ec_relieff(data, target, self.m, self.k, self.dist_func)
+        # Rank features.
+        if self.dist_func is not None:
+            # If distance function specified.
+            self.rank = self._ec_relieff(data, target, self.m, self.k, self.dist_func, 
+                    mode=self.mode, sig=self.sig, f_type=self.f_type)
+        else:
+            # If distance function not specified, use default L1 distance (implemented in Julia).
+            self.rank = self._ec_relieff(data, target, self.m, self.k, 
+                    mode=self.mode, sig=self.sig, f_type=self.f_type)
+
         return self
 
 

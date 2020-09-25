@@ -25,6 +25,8 @@ class IRelief(BaseEstimator, TransformerMixin):
         k_width (int): Kernel width. 
         conv_condition (float): threshold for change in feature weights at which to declare convergence.
         initial_w_div (float): initial value with which to divide the feature weights.
+        f_type (string): specifies whether the features are continuous or discrete 
+        and can either have the value of "continuous" or "discrete".
 
     Attributes:
         n_features_to_select (int): number of features to select from dataset.
@@ -32,18 +34,20 @@ class IRelief(BaseEstimator, TransformerMixin):
         k_width (int): Kernel width. 
         conv_condition (float): threshold for change in feature weights at which to declare convergence.
         initial_w_div (float): initial value with which to divide the feature weights.
+        f_type (string): continuous or discrete features.
         _irelief (function): function implementing IRelief written in Julia programming language.
 
     Author: Jernej Vivod
     """
     
     def __init__(self, n_features_to_select=10, max_iter=100,
-            k_width=5, conv_condition=1.0e-12, initial_w_div=1):
+            k_width=5, conv_condition=1.0e-12, initial_w_div=1, f_type="continuous"):
         self.n_features_to_select = n_features_to_select  # number of features to select
         self.max_iter = max_iter                          # Maximum number of iterations
         self.k_width = k_width                            # kernel width
         self.conv_condition = conv_condition              # convergence condition
         self.initial_w_div = initial_w_div                # initial weight quotient
+        self.f_type = f_type                              # continuous or discrete features
         self._irelief = IRelief_jl.irelief
 
 
@@ -61,7 +65,7 @@ class IRelief(BaseEstimator, TransformerMixin):
 
         # Run I-RELIEF feature selection algorithm.
         self.weights = self._irelief(data, target, self.max_iter, self.k_width, 
-                self.conv_condition, self.initial_w_div)
+                self.conv_condition, self.initial_w_div, f_type=self.f_type)
         self.rank = rankdata(-self.weights, method='ordinal')
 
         # Return reference to self.

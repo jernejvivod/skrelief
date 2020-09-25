@@ -7,10 +7,12 @@ include("./utils/square_to_vec.jl")
 
 
 """
-    multisurf(data::Array{<:Real,2}, target::Array{<:Number,1}, 
-                       dist_func::Any=(e1, e2) -> sum(abs.(e1 .- e2), dims=2))::Array{Float64,1}
+    multisurf(data::Array{<:Real,2}, target::Array{<:Integer,1}, 
+                       dist_func::Any=(e1, e2) -> sum(abs.(e1 .- e2), dims=2); 
+                       f_type::String="continuous")::Array{Float64,1}
 
-Compute feature weights using MultiSURF algorithm.
+Compute feature weights using MultiSURF algorithm. The f_type argument specifies whether the features are continuous or discrete 
+and can either have the value of "continuous" or "discrete".
 
 ---
 # Reference:
@@ -18,8 +20,9 @@ Compute feature weights using MultiSURF algorithm.
 Jason Moore. Benchmarking Relief-based feature selection methods for
 bioinformatics data mining. Journal of Biomedical Informatics, 85, 2018.
 """
-function multisurf(data::Array{<:Real,2}, target::Array{<:Number,1}, 
-                       dist_func::Any=(e1, e2) -> sum(abs.(e1 .- e2), dims=2))::Array{Float64,1}
+function multisurf(data::Array{<:Real,2}, target::Array{<:Integer,1}, 
+                       dist_func::Any=(e1, e2) -> sum(abs.(e1 .- e2), dims=2); 
+                       f_type::String="continuous")::Array{Float64,1}
 
     # Initialize feature weights vector.
     weights = zeros(Float64, 1, size(data, 2))
@@ -83,16 +86,36 @@ function multisurf(data::Array{<:Real,2}, target::Array{<:Number,1},
 
 
         ### Weights Update ###
+
+        if f_type == "continuous"
+            # If features continuous.
         
-        # Penalty term
-        penalty = sum(abs.(data[idx:idx, :] .- data[hit_neigh_mask_near, :])./((max_f_vals .- min_f_vals) .+ eps(Float64)), dims=1)
+            # Penalty term
+            penalty = sum(abs.(data[idx:idx, :] .- data[hit_neigh_mask_near, :])./((max_f_vals .- min_f_vals) .+ eps(Float64)), dims=1)
 
-        # Reward term
-        reward = sum(weights_mult .* (abs.(data[idx:idx, :] .- data[miss_neigh_mask_near])./((max_f_vals .- min_f_vals .+ eps(Float64)))), dims=1)
+            # Reward term
+            reward = sum(weights_mult .* (abs.(data[idx:idx, :] .- data[miss_neigh_mask_near, :])./((max_f_vals .- min_f_vals .+ eps(Float64)))), dims=1)
 
-        # Weights update
-        weights = weights .- penalty./(size(data, 1)*size(data[hit_neigh_mask_near, :], 1) + eps(Float64)) .+ 
-            reward./(size(data, 1)*size(data[miss_neigh_mask_near,:], 1) + eps(Float64))
+            # Weights update
+            weights = weights .- penalty./(size(data, 1)*size(data[hit_neigh_mask_near, :], 1) + eps(Float64)) .+ 
+                reward./(size(data, 1)*size(data[miss_neigh_mask_near,:], 1) + eps(Float64))
+
+        elseif f_type == "discrete"
+            # If features discrete.
+            
+            # Penalty term
+            penalty = sum(Int64.(data[idx:idx, :] .!= data[hit_neigh_mask_near, :]), dims=1)
+
+            # Reward term
+            reward = sum(weights_mult .* (Int64.(data[idx:idx, :] .!= data[miss_neigh_mask_near, :])), dims=1)
+
+            # Weights update
+            weights = weights .- penalty./(size(data, 1)*size(data[hit_neigh_mask_near, :], 1) + eps(Float64)) .+ 
+                reward./(size(data, 1)*size(data[miss_neigh_mask_near,:], 1) + eps(Float64))
+
+        else
+            throw(DomainError(f_type, "f_type can only be equal to \"continuous\" or \"discrete\"."))
+        end
 
         #####################
 

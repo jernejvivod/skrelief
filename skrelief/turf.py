@@ -23,7 +23,8 @@ class TuRF(BaseEstimator, TransformerMixin):
     Args:
         n_features_to_select (int): number of features to select from dataset.
         num_it (int): number of iterations.
-        rba (object): feature weighting algorithm wrapped by the TuRF algorithm.
+        rba (object): feature weighting algorithm wrapped by the VLSRelief algorithm. If equal
+        to None, the default ReliefF RBA implemented in Julia is used.
 
     Attributes:
         n_features_to_select (int): number of features to select from dataset.
@@ -32,7 +33,7 @@ class TuRF(BaseEstimator, TransformerMixin):
         _turf (function): function implementing TuRF algorithm written in Julia programming language.
     """
    
-    def __init__(self, n_features_to_select=10, num_it=50, rba=Relieff()):
+    def __init__(self, n_features_to_select=10, num_it=50, rba=None):
         self.n_features_to_select = n_features_to_select
         self.num_it = num_it
         self._rba = rba
@@ -51,12 +52,12 @@ class TuRF(BaseEstimator, TransformerMixin):
             (object): reference to self
         """
 
-        def rba_wrap(d, t):
-            rba = self._rba.fit(d, t)
-            return rba.weights, rba.rank
-
         # Compute feature weights and rank.
-        self.weights, self.rank = self._turf(data, target, self.num_it, rba_wrap)
+        if self._rba is not None:
+            self.weights = self._turf(data, target, self.num_it, self.rba_wrap)
+        else:
+            self.weights = self._turf(data, target, self.num_it)
+        self.rank = rankdata(-self.weights, method='ordinal')
         
         # Return reference to self.
         return self

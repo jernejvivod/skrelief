@@ -6,10 +6,12 @@ using Statistics
 
 
 """
-    function swrfstar(data::Array{<:Real,2}, target::Array{<:Number, 1}, m::Integer=-1, 
-                      dist_func::Any=(e1, e2) -> sum(abs.(e1 .- e2), dims=2))::Array{Float64,1}
+    swrfstar(data::Array{<:Real,2}, target::Array{<:Integer, 1}, m::Signed=-1, 
+                  dist_func::Any=(e1, e2) -> sum(abs.(e1 .- e2), dims=2); 
+                  f_type::String="continuous")::Array{Float64,1}
 
-Compute feature weights using SWRFStar algorithm.
+Compute feature weights using SWRF* algorithm. The f_type argument specifies whether the features are continuous or discrete 
+and can either have the value of "continuous" or "discrete".
 
 ---
 # Reference:
@@ -17,8 +19,9 @@ Compute feature weights using SWRFStar algorithm.
 Application of a spatially-weighted Relief algorithm for ranking genetic predictors of disease.
 BioData mining, 5(1):20–20, Dec 2012. 23198930[pmid].
 """
-function swrfstar(data::Array{<:Real,2}, target::Array{<:Number, 1}, m::Integer=-1, 
-                  dist_func::Any=(e1, e2) -> sum(abs.(e1 .- e2), dims=2))::Array{Float64,1}
+function swrfstar(data::Array{<:Real,2}, target::Array{<:Integer, 1}, m::Signed=-1, 
+                  dist_func::Any=(e1, e2) -> sum(abs.(e1 .- e2), dims=2); 
+                  f_type::String="continuous")::Array{Float64,1}
 
     # Initialize feature weights vector.
     weights = zeros(Float64, 1, size(data, 2))
@@ -84,15 +87,34 @@ function swrfstar(data::Array{<:Real,2}, target::Array{<:Number, 1}, m::Integer=
         
         
         ### Weights Update ###
+        
+        if f_type == "continuous"
+            # If features continuous.
 
-        # Penalty term
-        penalty = sum(neigh_weights_same.*(abs.(data[idx:idx, :] .- samples_same_class)./(max_f_vals .- min_f_vals .+ eps(Float64))), dims=1)
+            # Penalty term
+            penalty = sum(neigh_weights_same.*(abs.(data[idx:idx, :] .- samples_same_class)./(max_f_vals .- min_f_vals .+ eps(Float64))), dims=1)
 
-        # Reward term
-        reward = sum(neigh_weights_other.*(weights_mult .* (abs.(data[idx:idx, :] .- samples_other_class)./(max_f_vals .- min_f_vals .+ eps(Float64)))), dims=1)
+            # Reward term
+            reward = sum(neigh_weights_other.*(weights_mult .* (abs.(data[idx:idx, :] .- samples_other_class)./(max_f_vals .- min_f_vals .+ eps(Float64)))), dims=1)
 
-        # Weights update
-        weights = weights .- penalty./(m*size(samples_same_class, 1) + eps(Float64)) .+ reward./(m*size(samples_other_class, 1) + eps(Float64))
+            # Weights update
+            weights = weights .- penalty./(m*size(samples_same_class, 1) + eps(Float64)) .+ reward./(m*size(samples_other_class, 1) + eps(Float64))
+
+        elseif f_type == "discrete"
+            # If features discrete.
+
+            # Penalty term
+            penalty = sum(neigh_weights_same.*Int64.(data[idx:idx, :] .!= samples_same_class), dims=1)
+
+            # Reward term
+            reward = sum(neigh_weights_other.*weights_mult .* Int64.(data[idx:idx, :] .!= samples_other_class), dims=1)
+
+            # Weights update
+            weights = weights .- penalty./(m*size(samples_same_class, 1) + eps(Float64)) .+ reward./(m*size(samples_other_class, 1) + eps(Float64))
+
+        else
+            throw(DomainError(f_type, "f_type can only be equal to \"continuous\" or \"discrete\"."))
+        end
 
         ######################
 

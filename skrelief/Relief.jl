@@ -6,8 +6,8 @@ include("./utils/square_to_vec.jl")
 
 
 """
-    relief(data::Array{<:AbstractFloat,2}, target::Array{<:Integer,1}, m::Signed=-1, 
-                dist_func::Function=(e1, e2) -> sum(abs.(e1 .- e2), dims=2), f_type::String="continuous")::Array{Float64,1}
+    relief(data::Array{<:Real,2}, target::Array{<:Integer,1}, m::Signed=-1, 
+                dist_func::Any=(e1, e2) -> sum(abs.(e1 .- e2), dims=2); f_type::String="continuous")::Array{Float64,1}
 
 Compute feature weights using Relief algorithm. The f_type argument specifies whether the features are continuous or discrete 
 and can either have the value of "continuous" or "discrete".
@@ -19,8 +19,8 @@ ditional methods and a new algorithm. In Proceedings of the Tenth
 National Conference on Artificial Intelligence, AAAI’92, pages 129–134.
 AAAI Press, 1992.
 """
-function relief(data::Array{<:Number,2}, target::Array{<:Integer,1}, m::Signed=-1, 
-                dist_func::Function=(e1, e2) -> sum(abs.(e1 .- e2), dims=2); f_type::String="continuous")::Array{Float64,1}
+function relief(data::Array{<:Real,2}, target::Array{<:Integer,1}, m::Signed=-1, 
+                dist_func::Any=(e1, e2) -> sum(abs.(e1 .- e2), dims=2); f_type::String="continuous")::Array{Float64,1}
 
     # Initialize feature weights vector.
     weights = zeros(Float64, size(data, 2))

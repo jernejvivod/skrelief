@@ -1,13 +1,19 @@
 module VLSRelief
 export vlsrelief
+
+push!(LOAD_PATH, @__DIR__)
 using StatsBase
+using Relieff
+using Printf
 
 
 """
-    vlsrelief(data::Array{<:Real,2}, target::Array{<:Number,1}, num_partitions_to_select::Integer, 
-               num_subsets::Integer, partition_size::Integer, rba)::Array{Float64,1}
+    vlsrelief(data::Array{<:Real,2}, target::Array{<:Integer,1}, num_partitions_to_select::Integer, 
+                   num_subsets::Integer, partition_size::Integer, rba::Any=Relieff.relieff, 
+                   f_type::String="continuous")::Array{Float64,1}
 
-Compute feature weights using VLSRelief algorithm.
+Compute feature weights using VLSRelief algorithm. The rba argument specifies a (partially applied) wrapped 
+RBA algorithm that should accept just the data and target values.
 
 ---
 # Reference:
@@ -16,8 +22,8 @@ wide association analysis. In 2008 IEEE Symposium on Computational
 Intelligence in Bioinformatics and Computational Biology, CIBCB ’08,
 2008.
 """
-function vlsrelief(data::Array{<:Real,2}, target::Array{<:Number,1}, num_partitions_to_select::Integer, 
-                   num_subsets::Integer, partition_size::Integer, rba)::Array{Float64,1}
+function vlsrelief(data::Array{<:Real,2}, target::Array{<:Integer,1}, num_partitions_to_select::Integer, 
+                   num_subsets::Integer, partition_size::Integer; rba::Any=Relieff.relieff)::Array{Float64,1}
 
     # Initialize feature weights vector.
     weights = zeros(Float64, size(data, 2))
@@ -43,7 +49,7 @@ function vlsrelief(data::Array{<:Real,2}, target::Array{<:Number,1}, num_partiti
         end
         ind_sel_unl = ind_sel_unl[ind_sel_unl .<= feat_ind[end]]
         
-        # Perform ReliefF algorithm on subset to obtain local weights.
+        # Use RBA on subset to obtain local weights.
         rba_weights = rba(data[:, ind_sel_unl], target)
 
         # Update weights using computed local weights.

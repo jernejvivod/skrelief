@@ -23,29 +23,34 @@ class Relieff(BaseEstimator, TransformerMixin):
         n_features_to_select (int): number of features to select from dataset.
         m (int): training data sample size.
         k (int): number of nearest neighbours to find (for each class).
-        mode (str): how to compute updated weights from nearest neighbours. 
-            Legal values are "k_nearest", "diff" and "exp_rank"
-        sig (float): parameter specifying the influence of weights. Ignored if mode = "k_nearest".
         dist_func (function): function used to measure similarities between samples.
+        If equal to None, the default implementation of L1 distance in Julia is used.
+        mode (str): how to compute updated weights from nearest neighbours. 
+        Legal values are "k_nearest", "diff" and "exp_rank"
+        sig (float): parameter specifying the influence of weights. Ignored if mode = "k_nearest".
+        f_type (string): specifies whether the features are continuous or discrete 
+        and can either have the value of "continuous" or "discrete".
 
     Attributes:
         n_features_to_select (int): number of features to select from dataset.
         m (int): training data sample size.
         k (int): number of nearest neighbours to find (for each class).
-        mode (str): how to compute updated weights from nearest neighbours. 
-            Legal values are "k_nearest", "diff" and "exp_rank"
-        sig (float): parameter specifying the influence of weights. Ignored if mode = "k_nearest".
         dist_func (function): function used to measure similarities between samples.
+        mode (str): how to compute updated weights from nearest neighbours. 
+        sig (float): parameter specifying the influence of weights. Ignored if mode = "k_nearest".
+        f_type (string): continuous or discrete features.
         _relieff (function): function implementing ReliefF algorithm written in Julia programming language.
     """
    
-    def __init__(self, n_features_to_select=10, m=-1, k=5, mode="k_nearest", sig=1.0, dist_func=lambda x1, x2 : np.sum(np.abs(x1-x2), 1)):
+    def __init__(self, n_features_to_select=10, m=-1, k=10, dist_func=None, 
+            mode="k_nearest", sig=1.0, f_type="continuous"):
         self.n_features_to_select = n_features_to_select
         self.m = m 
         self.k = k
+        self.dist_func = dist_func
         self.mode = mode
         self.sig = sig
-        self.dist_func = dist_func
+        self.f_type = f_type
         self._relieff = Relieff_jl.relieff
 
 
@@ -72,7 +77,12 @@ class Relieff(BaseEstimator, TransformerMixin):
                     "does not have {1} instances associated with it.".format(min_instances, self.k), Warning)
 
         # Compute feature weights and rank.
-        self.weights = self._relieff(data, target, self.m, int(min(self.k, min_instances)), self.mode, self.sig, self.dist_func)
+        if self.dist_func is not None:
+            # If distance function specified.
+            self.weights = self._relieff(data, target, self.m, int(min(self.k, min_instances)),self.dist_func, mode=self.mode, sig=self.sig, f_type=self.f_type)
+        else:
+            # If distance function not specified, use default L1 distance (implemented in Julia).
+            self.weights = self._relieff(data, target, self.m, int(min(self.k, min_instances)), mode=self.mode, sig=self.sig, f_type=self.f_type)
         self.rank = rankdata(-self.weights, method='ordinal')
         
         # Return reference to self.

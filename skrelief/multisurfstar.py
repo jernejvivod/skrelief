@@ -23,16 +23,21 @@ class MultiSURFStar(BaseEstimator, TransformerMixin):
     Args:
         n_features_to_select (int): number of features to select from dataset.
         dist_func (function): function used to measure similarities between samples.
+        If equal to None, the default implementation of L1 distance in Julia is used.
+        f_type (string): specifies whether the features are continuous or discrete 
+        and can either have the value of "continuous" or "discrete".
 
     Attributes:
         n_features_to_select (int): number of features to select from dataset.
         dist_func (function): function used to measure similarities between samples.
+        f_type (string): continuous or discrete features.
         _multisurfstar (function): function implementing MultiSURFStar algorithm written in Julia programming language.
     """
    
-    def __init__(self, n_features_to_select=10, dist_func=lambda x1, x2 : np.sum(np.abs(x1-x2), 1)):
+    def __init__(self, n_features_to_select=10, dist_func=None, f_type="continuous"):
         self.n_features_to_select = n_features_to_select
         self.dist_func = dist_func
+        self.f_type=f_type
         self._multisurfstar = MultiSURFStar_jl.multisurfstar
 
 
@@ -49,7 +54,13 @@ class MultiSURFStar(BaseEstimator, TransformerMixin):
         """
 
         # Compute feature weights and rank.
-        self.weights = self._multisurfstar(data, target, self.dist_func)
+        if self.dist_func is not None:
+            # If distance function specified.
+            self.weights = self._multisurfstar(data, target, self.dist_func, f_type=self.f_type)
+        else:
+            # If distance function not specified, use default L1 distance (implemented in Julia).
+            self.weights = self._multisurfstar(data, target, f_type=self.f_type)
+
         self.rank = rankdata(-self.weights, method='ordinal')
         
         # Return reference to self.

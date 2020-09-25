@@ -6,14 +6,14 @@ include("./utils/square_to_vec.jl")
 
 
 """
-    min_radius(n::Int64, data::Array{<:Real,2}, target::Array{<:Number,1}, dist_func::Any)::Float64
+    min_radius(n::Integer, data::Array{<:Real,2}, target::Array{<:Integer,1}, dist_func::Any)::Float64
 
 Compute minimum raidus of hypersphere centered around each data sample so that each hypersphere contains
 at least n samples from same class as the corresponding data sample as well as n samples from a different class.
 
 Author: Jernej Vivod
 """
-function min_radius(n::Int64, data::Array{<:Real,2}, target::Array{<:Number,1}, dist_func::Any)::Float64
+function min_radius(n::Integer, data::Array{<:Real,2}, target::Array{<:Integer,1}, dist_func::Any)::Float64
 
     # Allocate array for storing minimum acceptable radius for each example in dataset.
     min_r = Array{Float64}(undef, size(data, 1))
@@ -66,8 +66,9 @@ end
 
 
 """
-    function iterative_relief(data::Array{<:Real,2}, target::Array{<:Number,1}, m::Int64=-1, min_incl::Int64=3, 
-                          dist_func::Any=(e1, e2, w) -> sum(w.*abs.(e1 .- e2), dims=2), max_iter::Int64=100)::Array{Float64,1}
+    iterative_relief(data::Array{<:Real,2}, target::Array{<:Integer,1}, m::Integer=-1, min_incl::Integer=3, 
+                          max_iter::Integer=100, dist_func::Any=(e1, e2, w) -> sum(abs.(w.*(e1 .- e2)), dims=2);
+                          f_type::String="continuous")::Array{Float64,1}
 
 Compute feature weights using Iterative Relief algorithm.
 
@@ -77,8 +78,9 @@ Compute feature weights using Iterative Relief algorithm.
 CVPR, IEEE Computer Society Conference on Computer Vision and
 Pattern Recognition., 6:62 – 62, 2003.
 """
-function iterative_relief(data::Array{<:Real,2}, target::Array{<:Number,1}, m::Int64=-1, min_incl::Int64=3, 
-                          dist_func::Any=(e1, e2, w) -> sum(abs.(w.*(e1 .- e2)), dims=2), max_iter::Int64=100)::Array{Float64,1}
+function iterative_relief(data::Array{<:Real,2}, target::Array{<:Integer,1}, m::Integer=-1, min_incl::Integer=3, 
+                          max_iter::Integer=100, dist_func::Any=(e1, e2, w) -> sum(abs.(w.*(e1 .- e2)), dims=2);
+                          f_type::String="continuous")::Array{Float64,1}
 
 
     # Get minimum radius needed to include n samples from same class and n samples
@@ -95,7 +97,7 @@ function iterative_relief(data::Array{<:Real,2}, target::Array{<:Number,1}, m::I
     feature_weights_prev = zeros(Float64, size(data, 2))
     
     # Iterate until reached maximum iterations or convergence.
-    while iter_count < max_iter && !convergence
+    @inbounds while iter_count < max_iter && !convergence
         
         # Increment iteration counter.
         iter_count += 1   
@@ -131,18 +133,38 @@ function iterative_relief(data::Array{<:Real,2}, target::Array{<:Number,1}, m::I
             dist_other = dist_other_all[sel]
             data_other = (data_filt[target_filt .!= target[idx], :])[vec(sel), :]
 
-            # *********** Feature Weights Update ***********
+            ### Weights Update ###
+
             w_miss = max.(0, 1 .- (dist_other.^2/min_r.^2))
             w_hit = max.(0, 1 .- (dist_same.^2/min_r.^2))
+
+            if f_type == "continuous"
+                # If features continuous.
         
-            numerator1 = sum(abs.(reshape(e, 1, length(e)) .- data_other) .* w_miss, dims=1)
-            denominator1 = sum(w_miss) + eps(Float64)
+                numerator1 = sum(abs.(reshape(e, 1, length(e)) .- data_other) .* w_miss, dims=1)
+                denominator1 = sum(w_miss) + eps(Float64)
 
-            numerator2 = sum(abs.(reshape(e, 1, length(e)) .- data_same) .* w_hit, dims=1)
-            denominator2 = sum(w_hit) + eps(Float64)
+                numerator2 = sum(abs.(reshape(e, 1, length(e)) .- data_same) .* w_hit, dims=1)
+                denominator2 = sum(w_hit) + eps(Float64)
 
-            feature_weights .+= vec(numerator1 ./ denominator1 .- numerator2 ./ denominator2)
-            # **********************************************
+                feature_weights .+= vec(numerator1 ./ denominator1 .- numerator2 ./ denominator2)
+
+            elseif f_type == "discrete"
+                # If features discrete.
+                
+                numerator1 = sum(Int64.(reshape(e, 1, length(e)) .!= data_other) .* w_miss, dims=1)
+                denominator1 = sum(w_miss) + eps(Float64)
+
+                numerator2 = sum(Int64.(reshape(e, 1, length(e)) .!= data_same) .* w_hit, dims=1)
+                denominator2 = sum(w_hit) + eps(Float64)
+
+                feature_weights .+= vec(numerator1 ./ denominator1 .- numerator2 ./ denominator2)
+
+            else
+                throw(DomainError(f_type, "f_type can only be equal to \"continuous\" or \"discrete\"."))
+            end
+
+            ######################
         
         end
 
