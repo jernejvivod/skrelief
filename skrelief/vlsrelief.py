@@ -1,15 +1,12 @@
 import numpy as np
 from scipy.stats import rankdata
-import os
 from sklearn.base import BaseEstimator, TransformerMixin
 
 from julia import Julia
-jl = Julia(compiled_modules=False)
-script_path = os.path.abspath(__file__)
-jl.eval('push!(LOAD_PATH, "' + script_path[:script_path.rfind('/')] + '/")')
-
-from julia import VLSRelief as VLSRelief_jl
+Julia(compiled_modules=False)
+from julia import Relief as Relief_jl
 from skrelief.relieff import Relieff
+
 
 class VLSRelief(BaseEstimator, TransformerMixin):
     """sklearn compatible implementation of the VLSRelief algorithm.
@@ -22,28 +19,27 @@ class VLSRelief(BaseEstimator, TransformerMixin):
 
     Args:
         n_features_to_select (int): number of features to select from dataset.
-        num_partitions_to_select (int): number of partitions to select for each iteration.
+        partition_size (int): size of selected partitions. If equal to -1, use default value computed from data.
+        num_partitions_to_select (int): number of partitions to select for each iteration. If equal to
+        -1, use default value computed from data.
         num_subsets (int): number of subsets to evaluate.
-        partition_size (int): size of selected partitions.
         rba (object): feature weighting algorithm wrapped by the VLSRelief algorithm. If equal
         to None, the default ReliefF RBA implemented in Julia is used.
 
     Attributes:
         n_features_to_select (int): number of features to select from dataset.
+        partition_size (int): size of selected partitions.
         num_partitions_to_select (int): number of partitions to select for each iteration.
         num_subsets (int): number of subsets to evaluate.
-        partition_size (int): size of selected partitions.
         _rba (object): feature weighting algorithm wrapped by the VLSRelief algorithm.
-        _vlsrelief (function): function implementing VLSRelief algorithm written in Julia programming language.
     """
    
-    def __init__(self, n_features_to_select=10, num_partitions_to_select=10, num_subsets=50, partition_size=10, rba=None):
+    def __init__(self, n_features_to_select=10, partition_size=-1, num_partitions_to_select=-1, num_subsets=20, rba=None):
         self.n_features_to_select = n_features_to_select
+        self.partition_size = partition_size
         self.num_partitions_to_select = num_partitions_to_select
         self.num_subsets = num_subsets
-        self.partition_size = partition_size
         self._rba = rba
-        self._vlsrelief = VLSRelief_jl.vlsrelief
 
 
     def fit(self, data, target):
@@ -61,13 +57,12 @@ class VLSRelief(BaseEstimator, TransformerMixin):
         # Compute feature weights and rank.
         if self._rba is not None:
             # If wrapped RBA specified.
-            self.weights = self._vlsrelief(data, target, self.num_partitions_to_select, 
-                    self.num_subsets, self.partition_size, rba=self._rba)
+            self.weights = Relief_jl.vlsrelief(data, target, self.partition_size, 
+                    self.num_partitions_to_select, self.num_subsets, rba=self._rba)
         else:
             # If wrapped RBA not specified, use default RBA (ReliefF implemented in Julia).
-            self.weights = self._vlsrelief(data, target, self.num_partitions_to_select, 
-                    self.num_subsets, self.partition_size)
-
+            self.weights = Relief_jl.vlsrelief(data, target, self.partition_size, 
+                    self.num_partitions_to_select, self.num_subsets)
         self.rank = rankdata(-self.weights, method='ordinal')
         
         # Return reference to self.

@@ -1,13 +1,9 @@
 import numpy as np
 from scipy.stats import rankdata
-import os
 from sklearn.base import BaseEstimator, TransformerMixin
 
 from julia import Julia
-jl = Julia(compiled_modules=False)
-script_path = os.path.abspath(__file__)
-jl.eval('push!(LOAD_PATH, "' + script_path[:script_path.rfind('/')] + '/")')
-
+Julia(compiled_modules=False)
 from julia import Relief as Relief_jl
 
 
@@ -33,7 +29,6 @@ class Relief(BaseEstimator, TransformerMixin):
         m (int): training data sample size.
         dist_func (function): function used to measure similarities between samples.
         f_type (string): continuous or discrete features.
-        _relief (function): function implementing Relief algorithm written in Julia programming language.
     """
 
     def __init__(self, n_features_to_select=10, m=-1, \
@@ -42,7 +37,6 @@ class Relief(BaseEstimator, TransformerMixin):
         self.m = m
         self.dist_func = dist_func
         self.f_type = f_type
-        self._relief = Relief_jl.relief
 
 
     def fit(self, data, target):
@@ -60,10 +54,10 @@ class Relief(BaseEstimator, TransformerMixin):
         # Compute feature weights and rank.
         if self.dist_func is not None:
             # If distance function specified.
-            self.weights = self._relief(data, target, self.m, self.dist_func, f_type=self.f_type)
+            self.weights = Relief_jl.relief(data, target, self.m, self.dist_func, f_type=self.f_type)
         else:
             # If distance function not specified, use default L1 distance (implemented in Julia).
-            self.weights = self._relief(data, target, self.m, f_type=self.f_type)
+            self.weights = Relief_jl.relief(data, target, self.m, f_type=self.f_type)
         self.rank = rankdata(-self.weights, method='ordinal')
 
         # Return reference to self

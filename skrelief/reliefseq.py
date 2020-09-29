@@ -1,14 +1,11 @@
 import numpy as np
 from scipy.stats import rankdata
-import os
 from sklearn.base import BaseEstimator, TransformerMixin
 
 from julia import Julia
-jl = Julia(compiled_modules=False)
-script_path = os.path.abspath(__file__)
-jl.eval('push!(LOAD_PATH, "' + script_path[:script_path.rfind('/')] + '/")')
+Julia(compiled_modules=False)
+from julia import Relief as Relief_jl
 
-from julia import ReliefSeq as ReliefSeq_jl
 
 class ReliefSeq(BaseEstimator, TransformerMixin):
     """sklearn compatible implementation of the ReliefSeq algorithm.
@@ -41,7 +38,6 @@ class ReliefSeq(BaseEstimator, TransformerMixin):
         mode (str): how to compute updated weights from nearest neighbours. 
         sig (float): parameter specifying the influence of weights. Ignored if mode = "k_nearest".
         f_type (string): continuous or discrete features.
-        _relieff (function): function implementing ReliefF algorithm written in Julia programming language.
     """
    
     def __init__(self, n_features_to_select=10, m=-1, k_min=5, k_max=10, 
@@ -54,7 +50,6 @@ class ReliefSeq(BaseEstimator, TransformerMixin):
         self.mode = mode
         self.sig = sig
         self.f_type = f_type
-        self._reliefseq = ReliefSeq_jl.reliefseq
 
 
     def fit(self, data, target):
@@ -71,10 +66,10 @@ class ReliefSeq(BaseEstimator, TransformerMixin):
 
         # Compute feature weights and rank.
         if self.dist_func is not None:
-            self.weights = self._reliefseq(data, target, self.m, self.k_min, self.k_max, 
+            self.weights = Relief_jl.reliefseq(data, target, self.m, self.k_min, self.k_max, 
                     self.dist_func, mode=self.mode, sig=self.sig, f_type=self.f_type)
         else:
-            self.weights = self._reliefseq(data, target, self.m, self.k_min, self.k_max, 
+            self.weights = Relief_jl.reliefseq(data, target, self.m, self.k_min, self.k_max, 
                     mode=self.mode, sig=self.sig, f_type=self.f_type)
         self.rank = rankdata(-self.weights, method='ordinal')
         

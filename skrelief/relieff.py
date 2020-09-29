@@ -1,15 +1,12 @@
 import numpy as np
 from scipy.stats import rankdata
-import os
 import warnings
 from sklearn.base import BaseEstimator, TransformerMixin
 
 from julia import Julia
-jl = Julia(compiled_modules=False)
-script_path = os.path.abspath(__file__)
-jl.eval('push!(LOAD_PATH, "' + script_path[:script_path.rfind('/')] + '/")')
+Julia(compiled_modules=False)
+from julia import Relief as Relief_jl
 
-from julia import Relieff as Relieff_jl
 
 class Relieff(BaseEstimator, TransformerMixin):
     """sklearn compatible implementation of the ReliefF algorithm.
@@ -51,7 +48,6 @@ class Relieff(BaseEstimator, TransformerMixin):
         self.mode = mode
         self.sig = sig
         self.f_type = f_type
-        self._relieff = Relieff_jl.relieff
 
 
     def fit(self, data, target):
@@ -79,10 +75,10 @@ class Relieff(BaseEstimator, TransformerMixin):
         # Compute feature weights and rank.
         if self.dist_func is not None:
             # If distance function specified.
-            self.weights = self._relieff(data, target, self.m, int(min(self.k, min_instances)),self.dist_func, mode=self.mode, sig=self.sig, f_type=self.f_type)
+            self.weights = Relief_jl.relieff(data, target, self.m, int(min(self.k, min_instances)),self.dist_func, mode=self.mode, sig=self.sig, f_type=self.f_type)
         else:
             # If distance function not specified, use default L1 distance (implemented in Julia).
-            self.weights = self._relieff(data, target, self.m, int(min(self.k, min_instances)), mode=self.mode, sig=self.sig, f_type=self.f_type)
+            self.weights = Relief_jl.relieff(data, target, self.m, int(min(self.k, min_instances)), mode=self.mode, sig=self.sig, f_type=self.f_type)
         self.rank = rankdata(-self.weights, method='ordinal')
         
         # Return reference to self.

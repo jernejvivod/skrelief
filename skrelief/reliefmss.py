@@ -1,14 +1,11 @@
 import numpy as np
 from scipy.stats import rankdata
-import os
 from sklearn.base import BaseEstimator, TransformerMixin
 
 from julia import Julia
-jl = Julia(compiled_modules=False)
-script_path = os.path.abspath(__file__)
-jl.eval('push!(LOAD_PATH, "' + script_path[:script_path.rfind('/')] + '/")')
+Julia(compiled_modules=False)
+from julia import Relief as Relief_jl
 
-from julia import ReliefMSS as ReliefMSS_jl
 
 class ReliefMSS(BaseEstimator, TransformerMixin):
     """sklearn compatible implementation of the ReliefMSS algorithm
@@ -32,7 +29,6 @@ class ReliefMSS(BaseEstimator, TransformerMixin):
         k (int): number of nearest neighbours to find (for each class).
         dist_func (function): function used to measure similarities between samples.
         f_type (string): continuous or discrete features.
-        _reliefmss (function): function implementing ReliefF algorithm written in Julia programming language.
     """
    
     def __init__(self, n_features_to_select=10, m=-1, k=5, dist_func=None, f_type="continuous"):
@@ -41,7 +37,6 @@ class ReliefMSS(BaseEstimator, TransformerMixin):
         self.k = k
         self.dist_func = dist_func
         self.f_type = f_type
-        self._reliefmss = ReliefMSS_jl.reliefmss
 
 
     def fit(self, data, target):
@@ -69,10 +64,10 @@ class ReliefMSS(BaseEstimator, TransformerMixin):
         # Compute feature weights and rank.
         if self.dist_func is not None:
             # If distance function specified.
-            self.weights = self._reliefmss(data, target, self.m, int(min(self.k, min_instances)), self.dist_func, f_type=self.f_type)
+            self.weights = Relief_jl.reliefmss(data, target, self.m, int(min(self.k, min_instances)), self.dist_func, f_type=self.f_type)
         else:
             # If distance function not specified, use default L1 distance (implemented in Julia).
-            self.weights = self._reliefmss(data, target, self.m, int(min(self.k, min_instances)), f_type=self.f_type)
+            self.weights = Relief_jl.reliefmss(data, target, self.m, int(min(self.k, min_instances)), f_type=self.f_type)
         self.rank = rankdata(-self.weights, method='ordinal')
         
         # Return reference to self.

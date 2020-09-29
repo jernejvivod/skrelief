@@ -1,14 +1,11 @@
 import numpy as np
 from scipy.stats import rankdata
-import os
 from sklearn.base import BaseEstimator, TransformerMixin
 
 from julia import Julia
-jl = Julia(compiled_modules=False)
-script_path = os.path.abspath(__file__)
-jl.eval('push!(LOAD_PATH, "' + script_path[:script_path.rfind('/')] + '/")')
+Julia(compiled_modules=False)
+from julia import Relief as Relief_jl
 
-from julia import IterativeRelief as IterativeRelief_jl
 
 class IterativeRelief(BaseEstimator, TransformerMixin):
     """sklearn compatible implementation of the iterative relief algorithm.
@@ -33,7 +30,6 @@ class IterativeRelief(BaseEstimator, TransformerMixin):
         max_iter (int): maximum number of iterations to perform.
         dist_func (function): function used to measure similarities between samples.
         f_type (string): continuous or discrete features.
-        _iterative_relief (function): function implementing IRelief algorithm written in Julia programming language.
 
     Author: Jernej Vivod
     """
@@ -46,7 +42,6 @@ class IterativeRelief(BaseEstimator, TransformerMixin):
         self.max_iter = max_iter
         self.dist_func = dist_func
         self.f_type = f_type
-        self._iterative_relief = IterativeRelief_jl.iterative_relief
 
 
     def fit(self, data, target):
@@ -64,10 +59,10 @@ class IterativeRelief(BaseEstimator, TransformerMixin):
         # Compute feature weights and rank.
         if self.dist_func is not None:
             # If distance function specified.
-            self.weights = self._iterative_relief(data, target, self.m, self.min_incl, self.max_iter, self.dist_func, f_type=self.f_type)
+            self.weights = Relief_jl.iterative_relief(data, target, self.m, self.min_incl, self.max_iter, self.dist_func, f_type=self.f_type)
         else:
             # If distance function not specified, use default weighted L1 distance (implemented in Julia).
-            self.weights = self._iterative_relief(data, target, self.m, self.min_incl, self.max_iter, f_type=self.f_type)
+            self.weights = Relief_jl.iterative_relief(data, target, self.m, self.min_incl, self.max_iter, f_type=self.f_type)
         self.rank = rankdata(-self.weights, method='ordinal')
         
         # Return reference to self.

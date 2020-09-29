@@ -1,15 +1,12 @@
 import numpy as np
-import os
 from sklearn.metrics import pairwise_distances
 from scipy.stats import rankdata
 from sklearn.base import BaseEstimator, TransformerMixin
 
 from julia import Julia
-jl = Julia(compiled_modules=False)
-script_path = os.path.abspath(__file__)
-jl.eval('push!(LOAD_PATH, "' + script_path[:script_path.rfind('/')] + '/")')
+Julia(compiled_modules=False)
+from julia import Relief as Relief_jl
 
-from julia import IRelief as IRelief_jl
 
 class IRelief(BaseEstimator, TransformerMixin):
     """sklearn compatible implementation of the IRelief algorithm.
@@ -48,7 +45,6 @@ class IRelief(BaseEstimator, TransformerMixin):
         self.conv_condition = conv_condition              # convergence condition
         self.initial_w_div = initial_w_div                # initial weight quotient
         self.f_type = f_type                              # continuous or discrete features
-        self._irelief = IRelief_jl.irelief
 
 
     def fit(self, data, target):
@@ -64,7 +60,7 @@ class IRelief(BaseEstimator, TransformerMixin):
         """
 
         # Run I-RELIEF feature selection algorithm.
-        self.weights = self._irelief(data, target, self.max_iter, self.k_width, 
+        self.weights = Relief_jl.irelief(data, target, self.max_iter, self.k_width, 
                 self.conv_condition, self.initial_w_div, f_type=self.f_type)
         self.rank = rankdata(-self.weights, method='ordinal')
 

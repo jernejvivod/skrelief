@@ -1,14 +1,11 @@
 import numpy as np
 from scipy.stats import rankdata
-import os
 from sklearn.base import BaseEstimator, TransformerMixin
 
 from julia import Julia
-jl = Julia(compiled_modules=False)
-script_path = os.path.abspath(__file__)
-jl.eval('push!(LOAD_PATH, "' + script_path[:script_path.rfind('/')] + '/")')
+Julia(compiled_modules=False)
+from julia import Relief as Relief_jl
 
-from julia import BoostedSURF as BoostedSURF_jl
 
 class BoostedSURF(BaseEstimator, TransformerMixin):
     """sklearn compatible implementation of the BoostedSURF algorithm.
@@ -32,7 +29,6 @@ class BoostedSURF(BaseEstimator, TransformerMixin):
         phi (int): the phi parameter that controls frequency of distace function weights updates.
         dist_func (function): function used to measure similarities between samples.
         f_type (string): continuous or discrete features.
-        _multisurfstar (function): function implementing MultiSURFStar algorithm written in Julia programming language.
     """
    
     def __init__(self, n_features_to_select=10, phi=3, dist_func=None, f_type="continuous"):
@@ -40,7 +36,6 @@ class BoostedSURF(BaseEstimator, TransformerMixin):
         self.phi=3
         self.dist_func = dist_func
         self.f_type = f_type
-        self._boostedsurf = BoostedSURF_jl.boostedsurf
 
 
     def fit(self, data, target):
@@ -58,10 +53,10 @@ class BoostedSURF(BaseEstimator, TransformerMixin):
         # Compute feature weights and rank.
         if self.dist_func is not None:
             # If distance function specified.
-            self.weights = self._boostedsurf(data, target, self.phi, self.dist_func, f_type=self.f_type)
+            self.weights = Relief_jl.boostedsurf(data, target, self.phi, self.dist_func, f_type=self.f_type)
         else:
             # If distance function not specified, use default eighted L1 distance (implemented in Julia).
-            self.weights = self._boostedsurf(data, target, self.phi, f_type=self.f_type)
+            self.weights = Relief_jl.boostedsurf(data, target, self.phi, f_type=self.f_type)
         self.rank = rankdata(-self.weights, method='ordinal')
         
         # Return reference to self.

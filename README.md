@@ -1,23 +1,18 @@
 # skrelief
-This package contains implementations of various Relief-based algorithms and is
-designed to be compatible with the scikit-learn machine learning framework.
-The algorithms themselves are written using the Julia programming language
-accessed using the PyJulia interface.
+
+
+This package contains implementations of interfaces for various Relief-based algorithms
+implemented in the Relief.jl package for the Julia programming lanugage. The implementations
+are accessed using the PyJulia interface. The interfaces are interoperable with scikit-learn 
+machine learning workflows.
+
 
 ## Installation
 
-The following packages are required to use skrelief:
+The package [Relief.jl](https://github.com/jernejvivod/Relief.jl) has to be installed to access the implementations of the algorithms.
+You can install it manually or use the Julia's package manager.
 
-* numpy
-
-* scipy
-
-* scikit-learn
-
-* julia
-
-
-Once the prerequisites are installed, you should be able to install skrelief with a pip command:
+You should be able to install skrelief with a pip command:
 
 ```
 pip install -e git+https://github.com/Architecton/skrelief#egg=skrelief
@@ -109,6 +104,4 @@ print(score)
 >>> 0.8591549295774648
 
 ```
-
-
 

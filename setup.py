@@ -2,8 +2,8 @@ from setuptools import setup
 
 setup(name='skrelief',
       version='0.1',
-      description='Collection of Relief-based algorithm implementations',
-      url='https://github.com/Architecton/skrelief',
+      description='scikit-learn compatible interface to a number of Relief-based feature selection algorithms',
+      url='https://github.com/jernejvivod/skrelief',
       author='Jernej Vivod',
       author_email='vivod.jernej@gmail.com',
       license='MIT',

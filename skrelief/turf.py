@@ -1,15 +1,12 @@
 import numpy as np
 from scipy.stats import rankdata
-import os
 from sklearn.base import BaseEstimator, TransformerMixin
 
 from julia import Julia
-jl = Julia(compiled_modules=False)
-script_path = os.path.abspath(__file__)
-jl.eval('push!(LOAD_PATH, "' + script_path[:script_path.rfind('/')] + '/")')
-
-from julia import TuRF as TuRF_jl
+Julia(compiled_modules=False)
+from julia import Relief as Relief_jl
 from skrelief.relieff import Relieff
+
 
 class TuRF(BaseEstimator, TransformerMixin):
     """sklearn compatible implementation of the TuRF algorithm.
@@ -30,14 +27,12 @@ class TuRF(BaseEstimator, TransformerMixin):
         n_features_to_select (int): number of features to select from dataset.
         num_it (int): number of iterations.
         _rba (object): feature weighting algorithm wrapped by the TuRF algorithm.
-        _turf (function): function implementing TuRF algorithm written in Julia programming language.
     """
    
-    def __init__(self, n_features_to_select=10, num_it=50, rba=None):
+    def __init__(self, n_features_to_select=10, num_it=10, rba=None):
         self.n_features_to_select = n_features_to_select
         self.num_it = num_it
         self._rba = rba
-        self._turf = TuRF_jl.turf
 
 
     def fit(self, data, target):
@@ -54,9 +49,9 @@ class TuRF(BaseEstimator, TransformerMixin):
 
         # Compute feature weights and rank.
         if self._rba is not None:
-            self.weights = self._turf(data, target, self.num_it, self.rba_wrap)
+            self.weights = Relief_jl.turf(data, target, self.num_it, self.rba_wrap)
         else:
-            self.weights = self._turf(data, target, self.num_it)
+            self.weights = Relief_jl.turf(data, target, self.num_it)
         self.rank = rankdata(-self.weights, method='ordinal')
         
         # Return reference to self.

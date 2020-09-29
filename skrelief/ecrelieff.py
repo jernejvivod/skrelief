@@ -1,16 +1,10 @@
 import numpy as np
 from scipy.stats import rankdata
-
-import os
-
 from sklearn.base import BaseEstimator, TransformerMixin
 
 from julia import Julia
-jl = Julia(compiled_modules=False)
-script_path = os.path.abspath(__file__)
-jl.eval('push!(LOAD_PATH, "' + script_path[:script_path.rfind('/')] + '/")')
-
-from julia import ECRelieff as ECRelieff_jl
+Julia(compiled_modules=False)
+from julia import Relief as Relief_jl
 
 
 class ECRelieff(BaseEstimator, TransformerMixin):
@@ -39,7 +33,6 @@ class ECRelieff(BaseEstimator, TransformerMixin):
         mode (string): which type of weights update to perform.
         sig (float): kernel width (when mode has the value of "exp_rank").
         f_type (string): continuous or discrete features.
-        _ec_relieff (function): function implementing ECReliefF algorithm written in Julia programming language.
 
     Author: Jernej Vivod
     """
@@ -53,7 +46,6 @@ class ECRelieff(BaseEstimator, TransformerMixin):
         self.mode = mode
         self.sig = sig
         self.f_type = f_type
-        self._ec_relieff = ECRelieff_jl.ec_relieff
 
 
     def fit(self, data, target):
@@ -71,11 +63,11 @@ class ECRelieff(BaseEstimator, TransformerMixin):
         # Rank features.
         if self.dist_func is not None:
             # If distance function specified.
-            self.rank = self._ec_relieff(data, target, self.m, self.k, self.dist_func, 
+            self.rank = Relief_jl.ecrelieff(data, target, self.m, self.k, self.dist_func, 
                     mode=self.mode, sig=self.sig, f_type=self.f_type)
         else:
             # If distance function not specified, use default L1 distance (implemented in Julia).
-            self.rank = self._ec_relieff(data, target, self.m, self.k, 
+            self.rank = Relief_jl.ecrelieff(data, target, self.m, self.k, 
                     mode=self.mode, sig=self.sig, f_type=self.f_type)
 
         return self

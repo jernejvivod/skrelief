@@ -1,14 +1,11 @@
 import numpy as np
 from scipy.stats import rankdata
-import os
 from sklearn.base import BaseEstimator, TransformerMixin
 
 from julia import Julia
-jl = Julia(compiled_modules=False)
-script_path = os.path.abspath(__file__)
-jl.eval('push!(LOAD_PATH, "' + script_path[:script_path.rfind('/')] + '/")')
+Julia(compiled_modules=False)
+from julia import Relief as Relief_jl
 
-from julia import SURF as SURF_jl
 
 class SURF(BaseEstimator, TransformerMixin):
     """sklearn compatible implementation of the SURF algorithm.
@@ -29,14 +26,12 @@ class SURF(BaseEstimator, TransformerMixin):
         n_features_to_select (int): number of features to select from dataset.
         dist_func (function): function used to measure similarities between samples.
         f_type (string): continuous or discrete features.
-        _surf (function): function implementing SURF algorithm written in Julia programming language.
     """
    
     def __init__(self, n_features_to_select=10, dist_func=None, f_type="continuous"):
         self.n_features_to_select = n_features_to_select
         self.dist_func = dist_func
         self.f_type = f_type
-        self._surf = SURF_jl.surf
 
 
     def fit(self, data, target):
@@ -54,10 +49,10 @@ class SURF(BaseEstimator, TransformerMixin):
         # Compute feature weights and rank.
         if self.dist_func is not None:
             # If distance function specified.
-            self.weights = self._surf(data, target, self.dist_func, f_type=self.f_type)
+            self.weights = Relief_jl.surf(data, target, self.dist_func, f_type=self.f_type)
         else:
             # If distance function not specified, use default L1 distance (implemented in Julia).
-            self.weights = self._surf(data, target, f_type=self.f_type)
+            self.weights = Relief_jl.surf(data, target, f_type=self.f_type)
         self.rank = rankdata(-self.weights, method='ordinal')
         
         # Return reference to self.
