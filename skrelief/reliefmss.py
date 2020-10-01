@@ -1,6 +1,7 @@
 import numpy as np
 from scipy.stats import rankdata
 from sklearn.base import BaseEstimator, TransformerMixin
+import warnings
 
 from julia import Julia
 Julia(compiled_modules=False)
