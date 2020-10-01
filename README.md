@@ -29,14 +29,14 @@ For example, the SWRF* algorithm can be used to estimate feature importances as 
 ```python
 
 import numpy as np
-import scipy.io as sio
+import pandas as pd
 from sklearn.preprocessing import StandardScaler
 from skrelief import swrfstar
 
 # Load sample dataset.
-dataset = sio.loadmat('./sample-data/ionosphere.mat')
-data = dataset['data']
-target = np.ravel(dataset['target'])
+df = pd.read_csv('ionosphere.data')
+data = df.iloc[:, :-1].values
+target = df.iloc[:, -1].astype('category').cat.codes.values.astype(int)
 
 # Initialize feature standardizer.
 scaler = StandardScaler()
@@ -68,7 +68,7 @@ algorithm in a scikit-learn pipeline is shown below:
 ```python
 
 import numpy as np
-import scipy.io as sio
+import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
@@ -77,9 +77,9 @@ from sklearn.ensemble import RandomForestClassifier
 from skrelief import swrfstar
 
 # Load sample dataset.
-dataset = sio.loadmat('./sample-data/ionosphere.mat')
-data = dataset['data']
-target = np.ravel(dataset['target'])
+df = pd.read_csv('ionosphere.data')
+data = df.iloc[:, :-1].values
+target = df.iloc[:, -1].astype('category').cat.codes.values.astype(int)
 
 # Initialize SWRFStar implementation instance.
 fs = swrfstar.SWRFStar(n_features_to_select=10)
